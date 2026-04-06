@@ -29,6 +29,9 @@ const UserSchema = new mongoose.Schema({
         focusTime: { type: Number, default: 0 },
         points: { type: Number, default: 0 }
     }],
+    currentStreak: { type: Number, default: 0 },
+    lastStreakUpdate: { type: String, default: "" }, // YYYY-MM-DD
+    streakBrokenAt: { type: Date, default: null }, // Timestamp when streak broke
     lastActive: { type: Date, default: Date.now }
 });
 

@@ -18,6 +18,13 @@
     <div class="bg-orb orb-1"></div>
     <div class="bg-orb orb-2"></div>
 
+    <!-- Decorative 3D Elements -->
+    <div class="floating-3d-container">
+        <div class="deco-shape shape-sphere shape-1"></div>
+        <div class="deco-shape shape-2"></div>
+        <div class="deco-shape shape-sphere shape-3"></div>
+    </div>
+
     <!-- Alert Container -->
     <div id="alert-container" class="alert-container"></div>
 
@@ -89,7 +96,8 @@
                     <input type="password" id="reg-password" placeholder="••••••••">
                 </div>
             </div>
-            <button id="btn-register-submit" class="btn primary full-width" style="margin-top: 1rem;">Create Account</button>
+            <button id="btn-register-submit" class="btn primary full-width" style="margin-top: 1rem;">Create
+                Account</button>
         </div>
     </div>
 
@@ -102,18 +110,29 @@
             <p id="home-subtitle">Professional deep work environments for individuals and teams.</p>
         </div>
 
-        <div class="stats-overview glass-panel" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2.5rem; padding: 1.5rem;">
+        <div class="stats-overview glass-panel"
+            style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2.5rem; padding: 1.5rem;">
             <div class="stat-card" style="text-align: center; border-right: 1px solid rgba(255,255,255,0.05);">
                 <div class="mantra-label" style="font-size: 0.6rem;">TODAY'S FOCUS</div>
-                <div id="stat-daily-time" style="font-size: 1.2rem; font-weight: 700; color: var(--status-active);">00m</div>
+                <div id="stat-daily-time" style="font-size: 1.2rem; font-weight: 700; color: var(--status-active);">00m
+                </div>
             </div>
             <div class="stat-card" style="text-align: center; border-right: 1px solid rgba(255,255,255,0.05);">
                 <div class="mantra-label" style="font-size: 0.6rem;">TODAY'S REWARDS</div>
                 <div id="stat-daily-points" style="font-size: 1.2rem; font-weight: 700; color: #ffca28;">0 pts</div>
             </div>
-            <div class="stat-card" style="text-align: center;">
+            <div class="stat-card" style="text-align: center; border-right: 1px solid rgba(255,255,255,0.05);">
                 <div class="mantra-label" style="font-size: 0.6rem;">LIFETIME MASTERY</div>
-                <div id="stat-total-points" style="font-size: 1.2rem; font-weight: 700; color: var(--text-muted);">0 pts</div>
+                <div id="stat-total-points" style="font-size: 1.2rem; font-weight: 700; color: var(--text-muted);">0 pts
+                </div>
+            </div>
+            <div class="stat-card" style="text-align: center;">
+                <div class="mantra-label" style="font-size: 0.6rem;">STREAK</div>
+                <div id="stat-streak" style="font-size: 1.2rem; font-weight: 700; color: #f4511e;">0 Days</div>
+                <div id="streak-restore-container" class="hidden">
+                    <a href="#" id="btn-restore-streak" style="font-size: 0.6rem; color: var(--status-active);">Restore
+                        (500 pts)</a>
+                </div>
             </div>
         </div>
 
@@ -128,8 +147,10 @@
             </div>
         </div>
 
-        <div id="sync-status-msg" style="font-size: 0.7rem; color: var(--status-active); margin-top: -1.5rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.5rem; opacity: 0.7;">
-            <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--status-active); box-shadow: 0 0 8px var(--status-active);"></span>
+        <div id="sync-status-msg"
+            style="font-size: 0.7rem; color: var(--status-active); margin-top: -1.5rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.5rem; opacity: 0.7;">
+            <span
+                style="width: 6px; height: 6px; border-radius: 50%; background: var(--status-active); box-shadow: 0 0 8px var(--status-active);"></span>
             CONNECTED TO GLOBAL SERVER • SYNCHRONIZATION ACTIVE
         </div>
 
@@ -191,7 +212,28 @@
                 </select>
             </div>
 
-            <button id="btn-submit-create" class="btn primary" style="width:100%; margin-top:1rem;">Initialize Session</button>
+            <div class="form-group">
+                <label>Whitelisted Research Domains (Comma Separated)</label>
+                <input type="text" id="input-create-whitelist" placeholder="leetcode.com, chatgpt.com, github.com">
+                <div class="whitelist-suggestions"
+                    style="margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    <button class="btn-pill" onclick="appendWhitelist('leetcode.com')"
+                        style="font-size: 0.65rem; padding: 0.25rem 0.6rem;">+ LeetCode</button>
+                    <button class="btn-pill" onclick="appendWhitelist('hackerrank.com')"
+                        style="font-size: 0.65rem; padding: 0.25rem 0.6rem;">+ HackerRank</button>
+                    <button class="btn-pill" onclick="appendWhitelist('chatgpt.com')"
+                        style="font-size: 0.65rem; padding: 0.25rem 0.6rem;">+ ChatGPT</button>
+                    <button class="btn-pill" onclick="appendWhitelist('github.com')"
+                        style="font-size: 0.65rem; padding: 0.25rem 0.6rem;">+ GitHub</button>
+                    <button class="btn-pill" onclick="appendWhitelist('youtube.com')"
+                        style="font-size: 0.65rem; padding: 0.25rem 0.6rem;">+ YouTube</button>
+                </div>
+                <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.25rem;">Focus alerts are
+                    suppressed if you switch to these research tools.</p>
+            </div>
+
+            <button id="btn-submit-create" class="btn primary" style="width:100%; margin-top:1.5rem;">Initialize
+                Session</button>
         </div>
     </div>
 
@@ -204,7 +246,11 @@
                 <div id="room-id-chip" class="id-chip">
                     <span id="room-code-display">#0000</span>
                     <button id="btn-copy-code" class="btn-icon" title="Copy Room ID">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -216,16 +262,23 @@
             <div class="panel glass-panel">
                 <h3>Session Pulse</h3>
                 <div class="timer-container" style="text-align: center;">
-                    <div id="session-display" style="font-size: 1rem; font-weight: 700; color: var(--primary); letter-spacing: 0.2rem; margin-bottom: 0.5rem;">SESSION <span id="session-number">1</span></div>
+                    <div id="session-display"
+                        style="font-size: 1rem; font-weight: 700; color: var(--primary); letter-spacing: 0.2rem; margin-bottom: 0.5rem;">
+                        SESSION <span id="session-number">1</span></div>
                     <div id="countdown-timer" class="main-timer" style="font-size: 5rem; margin: 0.5rem 0;">25:00</div>
-                    <div id="timer-phase-label" style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1rem; margin-bottom: 2rem;">Work Phase</div>
-                    
+                    <div id="timer-phase-label"
+                        style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1rem; margin-bottom: 2rem;">
+                        Work Phase</div>
+
                     <div style="border-top: 1px solid var(--surface-border); padding-top: 1.5rem; margin-top: 1.5rem;">
-                        <span class="stat-label" style="display: block; margin-bottom: 0.5rem;">Total Session Time Remaining</span>
-                        <div id="total-room-time" style="font-size: 1.5rem; font-weight: 700; color: var(--status-active); font-variant-numeric: tabular-nums;">--:--:--</div>
+                        <span class="stat-label" style="display: block; margin-bottom: 0.5rem;">Total Session Time
+                            Remaining</span>
+                        <div id="total-room-time"
+                            style="font-size: 1.5rem; font-weight: 700; color: var(--status-active); font-variant-numeric: tabular-nums;">
+                            --:--:--</div>
                     </div>
                 </div>
-                
+
                 <!-- Extra Session Stats for Professionalism -->
                 <div class="session-stats">
                     <div class="stat">
@@ -233,12 +286,22 @@
                         <span id="stat-score" class="stat-value">0%</span>
                     </div>
                 </div>
+
+                <div class="research-launchpad glass-panel"
+                    style="margin-top: 1.5rem; padding: 1.25rem; border-color: rgba(255,255,255,0.02);">
+                    <div class="mantra-label" style="font-size: 0.6rem; margin-bottom: 0.75rem;">RESEARCH LAUNCHPAD
+                    </div>
+                    <div id="room-research-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <span style="font-size: 0.65rem; color: var(--text-muted);">No whitelisted resources.</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Center Panel: Grid -->
             <div class="panel glass-panel" style="overflow: hidden; flex: 2;">
                 <div class="grid-header">
-                    <h3 style="border: none; padding: 0; margin: 0;">Collaborators (<span id="participant-count">0</span>)</h3>
+                    <h3 style="border: none; padding: 0; margin: 0;">Collaborators (<span
+                            id="participant-count">0</span>)</h3>
                     <div class="media-controls">
                         <button id="btn-toggle-mic" class="btn-pill" data-state="on">🎤 Audio</button>
                         <button id="btn-toggle-vid" class="btn-pill" data-state="on">📷 Video</button>

@@ -3,8 +3,35 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const { connectDB, User } = require("./server db.js");
+const axios = require("axios");
 
 connectDB();
+
+// Telegram Bot Configuration
+const BOT_TOKEN = "8785026938:AAEtekfGoNhFi6jcmL9Tojz-Uq7irmLdwQ4";  // paste your token
+const CHAT_ID = "6277896138";       // your chat id
+
+function sendTelegramMessage(text) {
+  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+
+  axios.post(url, {
+    chat_id: CHAT_ID,
+    text: text
+  }).catch(err => {
+    console.log("Telegram error:", err.message);
+  });
+}
+
+// Cooldown Management (60s)
+let lastSent = {};
+function canSend(userId) {
+  const now = Date.now();
+  if (!lastSent[userId] || now - lastSent[userId] > 60000) {
+    lastSent[userId] = now;
+    return true;
+  }
+  return false;
+}
 
 const app = express();
 app.use(cors());
@@ -85,11 +112,23 @@ setInterval(() => {
               
               // Emit live stats update to THIS SPEFICIC user
               const todayData = updatedUser ? (updatedUser.dailyStats.find(s => s.date === todayDate) || { focusTime: 0, points: 0 }) : { focusTime: 1, points: 1 };
+              
+              // --- STREAK CALCULATION ---
+              // Threshold: 30 minutes = 1800 seconds
+              if (todayData.focusTime >= 1800 && updatedUser && updatedUser.lastStreakUpdate !== todayDate) {
+                  // Increment Streak
+                  await User.findOneAndUpdate(
+                      { username: user.username },
+                      { $inc: { currentStreak: 1 }, $set: { lastStreakUpdate: todayDate, streakBrokenAt: null } }
+                  );
+              }
+
               io.to(user.id).emit("user_stats_update", {
                   totalPoints: (updatedUser ? updatedUser.points : 1),
                   totalFocusTime: (updatedUser ? updatedUser.totalFocusTime : 1),
                   todayPoints: todayData.points,
-                  todayFocusTime: todayData.focusTime
+                  todayFocusTime: todayData.focusTime,
+                  currentStreak: (updatedUser ? updatedUser.currentStreak : 0)
               });
           });
         }
@@ -151,6 +190,14 @@ app.get("/public-rooms", (req, res) => {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
+  socket.on("focus_lost", ({ username, userId }) => {
+    console.log(`${username} lost focus`);
+  
+    if (canSend(userId)) {
+      sendTelegramMessage(`⚠️ ${username}, you lost focus. Get back to work!`);
+    }
+  });
+
   // Return public rooms to requesting clients
   socket.on("get_public_rooms", () => {
     broadcastPublicRooms(socket);
@@ -158,7 +205,7 @@ io.on("connection", (socket) => {
 
   // Join Room
   socket.on("join_room", (data) => {
-    const { roomId, username, name, isPublic = false, roomCode, startTime, roomMode = 'commitment', duration = 1500 } = data;
+    const { roomId, username, name, isPublic = false, roomCode, startTime, roomMode = 'commitment', duration = 1500, whitelist } = data;
     console.log(`[JOIN_ROOM] Session ${roomId} joining by ${username} with name: ${name}`);
     socket.join(roomId);
 
@@ -176,7 +223,8 @@ io.on("connection", (socket) => {
         isRunning: false,
         isPublic: isPublic,
         roomCode: isPublic ? roomCode : null, 
-        peakUsers: 0
+        peakUsers: 0,
+        whitelist: whitelist ? whitelist.split(',').map(s => s.trim().toLowerCase()).filter(s => s) : []
       };
     }
 
@@ -206,7 +254,8 @@ io.on("connection", (socket) => {
         roomTitle: rooms[roomId].roomName,
         mode: rooms[roomId].roomMode,
         duration: rooms[roomId].totalTimer,
-        isPublic: rooms[roomId].isPublic
+        isPublic: rooms[roomId].isPublic,
+        whitelist: rooms[roomId].whitelist || []
     });
 
     // Notify others in room
@@ -307,15 +356,62 @@ io.on("connection", (socket) => {
         const todayDate = new Date().toISOString().split('T')[0];
         const user = await User.findOne({ username });
         if (user) {
+            // Check if streak was broken (missed yesterday's 30-min goal)
+            const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            
+            let isBroken = false;
+            // If the last update was NOT today and NOT yesterday, and the streak is still "active" (>0)
+            if (user.currentStreak > 0 && user.lastStreakUpdate !== todayDate && user.lastStreakUpdate !== yesterdayStr) {
+                if (!user.streakBrokenAt) {
+                    user.streakBrokenAt = new Date(); // Record failure timestamp
+                    await User.findOneAndUpdate({ username }, { streakBrokenAt: user.streakBrokenAt });
+                }
+                isBroken = true;
+            }
+
             const todayData = user.dailyStats.find(s => s.date === todayDate) || { focusTime: 0, points: 0 };
             socket.emit("user_stats_update", {
                 totalPoints: user.points,
                 totalFocusTime: user.totalFocusTime,
                 todayPoints: todayData.points,
-                todayFocusTime: todayData.focusTime
+                todayFocusTime: todayData.focusTime,
+                currentStreak: isBroken ? 0 : user.currentStreak,
+                isStreakBroken: isBroken,
+                canRestore: isBroken && (Date.now() - new Date(user.streakBrokenAt).getTime() < 86400000)
             });
         }
-    } catch(e) {}
+    } catch(e) { console.log("[STATS_ERROR]", e); }
+  });
+
+  // Strength Restore Action
+  socket.on("restore_streak", async ({ username }) => {
+    try {
+        const user = await User.findOne({ username });
+        if (user && user.streakBrokenAt) {
+            const now = Date.now();
+            const timeElapsed = now - new Date(user.streakBrokenAt).getTime();
+            const streakCost = 500; // Redemption cost
+            
+            if (timeElapsed < 86400000 && user.points >= streakCost) {
+                // To restore effectively, we set lastStreakUpdate to YESTERDAY
+                const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                
+                await User.findOneAndUpdate(
+                    { username },
+                    { 
+                        $inc: { points: -streakCost }, 
+                        $set: { streakBrokenAt: null, lastStreakUpdate: yesterdayStr } 
+                    }
+                );
+                socket.emit("alert", "Laboratory Streak Restored! Don't lose focus again.", "success");
+                socket.emit("get_user_stats", { username }); // Refresh dashboard
+            } else {
+                socket.emit("alert", "Restoration failed: Insufficient points or 24h window closed.");
+            }
+        }
+    } catch(e) { console.log("[RESTORE_ERR]", e); }
   });
 
   // Disconnect

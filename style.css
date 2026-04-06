@@ -72,8 +72,40 @@ body {
     right: -100px;
 }
 
-.orb-3 {
-    display: none;
+/* Decorative 3D Elements */
+.floating-3d-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+    opacity: 0.15;
+}
+
+.deco-shape {
+    position: absolute;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255,255,255,0.1);
+    animation: float3d 20s infinite ease-in-out;
+}
+
+.shape-sphere {
+    border-radius: 50%;
+    box-shadow: inset -10px -10px 20px rgba(0,0,0,0.2), inset 10px 10px 20px rgba(255,255,255,0.1);
+}
+
+.shape-1 { width: 15vw; height: 15vw; top: 10%; left: -5%; transform: rotate(15deg); }
+.shape-2 { width: 10vw; height: 10vw; bottom: 15%; right: 5%; animation-delay: -5s; }
+.shape-3 { width: 20vw; height: 20vw; top: 40%; left: 80%; animation-delay: -10s; border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; }
+
+@keyframes float3d {
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+    33% { transform: translate(2vw, 5vh) rotate(10deg) scale(1.05); }
+    66% { transform: translate(-1vw, 2vh) rotate(-5deg) scale(0.95); }
 }
 
 .hidden {

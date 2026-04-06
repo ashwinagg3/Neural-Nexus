@@ -10,7 +10,9 @@ const state = {
     firstName: localStorage.getItem('focus_fname') || '',
     media: { micOn: true, vidOn: true },
     localStream: null,
-    peers: {} // socketId -> { peer, stream }
+    peers: {}, // socketId -> { peer, stream }
+    whitelist: [],
+    researchModeTimeout: null
 };
 
 // ====== DOM ELEMENTS ======
@@ -225,6 +227,30 @@ socket.on("user_stats_update", (stats) => {
         document.getElementById('stat-daily-time').innerText = timeStr;
         document.getElementById('stat-daily-points').innerText = `${Math.floor(stats.todayPoints)} pts`;
         document.getElementById('stat-total-points').innerText = `${Math.floor(stats.totalPoints)} pts`;
+        
+        // Strength (Streak) Logic
+        const streakEl = document.getElementById("stat-streak");
+        const restoreContainer = document.getElementById("streak-restore-container");
+        
+        if (stats.isStreakBroken && stats.canRestore) {
+            streakEl.innerText = "BROKEN";
+            streakEl.style.color = "#ff5252"; 
+            restoreContainer.classList.remove("hidden");
+        } else {
+            streakEl.innerText = `${stats.currentStreak || 0} Days`;
+            streakEl.style.color = "#f4511e";
+            restoreContainer.classList.add("hidden");
+        }
+    }
+});
+
+// Streak Restoration Listener
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'btn-restore-streak') {
+        e.preventDefault();
+        if (confirm("Redeem 500 points to restore your laboratory streak?")) {
+            socket.emit("restore_streak", { username: state.username });
+        }
     }
 });
 
@@ -232,6 +258,11 @@ socket.on("user_stats_update", (stats) => {
 function showView(viewName) {
     Object.values(views).forEach(v => v.classList.add('hidden'));
     views[viewName].classList.remove('hidden');
+
+    // Reset title if not in session room
+    if (viewName !== 'room') {
+        document.title = "FocusRoom | Elite-Tier Productivity";
+    }
 }
 
 function renderHomeRooms(rooms) {
@@ -329,6 +360,7 @@ function updateTimerDisplay() {
     // Countdown or Countup logic
     const trMins = Math.floor(totalRemaining / 60);
     const trSecs = totalRemaining % 60;
+    const timeStr = `${trMins.toString().padStart(2, '0')}:${trSecs.toString().padStart(2, '0')}`;
 
     // Total Room Time (Left Panel)
     const overallTotal = state.totalTimerRemaining || 0;
@@ -338,8 +370,12 @@ function updateTimerDisplay() {
 
     dom.totalRoomTime.innerText = `${oh}h ${om}m ${os}s`;
     dom.sessionNumber.innerText = state.sessionCount || 1;
-    dom.timerDisplay.innerText = `${trMins.toString().padStart(2, '0')}:${trSecs.toString().padStart(2, '0')}`;
+    dom.timerDisplay.innerText = timeStr;
     dom.timerPhaseLabel.innerText = state.currentPhase || "Focusing...";
+
+    // Tab-Bar Dynamic Synchronization
+    const phase = state.currentPhase || "Work";
+    document.title = `[${phase}] ${timeStr} | FocusRoom`;
 }
 
 async function requestMediaPermissions() {
@@ -360,10 +396,38 @@ socket.on("room_init", (data) => {
     console.log("[ROOM_INIT] Received:", data);
     dom.roomTitle.innerText = data.roomTitle || "Focus Room";
     dom.roomMode.innerText = data.mode ? data.mode.charAt(0).toUpperCase() + data.mode.slice(1) : "Survival";
+    
+    // --- Research Whitelist Integration ---
+    state.whitelist = data.whitelist || [];
+    renderResearchList();
 });
 
+function renderResearchList() {
+    const list = document.getElementById("room-research-list");
+    if (!list) return;
+
+    list.innerHTML = "";
+    if (state.whitelist.length === 0) {
+        list.innerHTML = `<span style="font-size: 0.65rem; color: var(--text-muted);">No whitelisted resources for this session.</span>`;
+        return;
+    }
+
+    state.whitelist.forEach(site => {
+        const link = document.createElement("button");
+        link.className = "btn-pill";
+        link.style.width = "100%";
+        link.style.justifyContent = "flex-start";
+        link.style.fontSize = "0.7rem";
+        link.style.background = "rgba(0, 229, 255, 0.05)";
+        link.style.border = "1px solid rgba(0, 229, 255, 0.1)";
+        link.innerHTML = `<span style="font-size: 0.8rem; margin-right: 0.5rem;">🚀</span> Launch ${site}`;
+        link.onclick = () => launchResearchSite(site);
+        list.appendChild(link);
+    });
+}
+
 // ====== ACTIONS ======
-window.joinRoom = async function (id, name, mode, durationHours, isPublic = true) {
+window.joinRoom = async function (id, name, mode, durationHours, isPublic = true, whitelist = "") {
     state.currentRoomId = id;
     dom.roomTitle.innerText = name || `Focus Session`;
     dom.roomCodeDisplay.innerText = `#${id.slice(0, 4)}`;
@@ -377,10 +441,11 @@ window.joinRoom = async function (id, name, mode, durationHours, isPublic = true
         roomId: id,
         username: state.username,
         name: name,
-        roomCode: id, // Added roomCode here!
+        roomCode: id, 
         roomMode: mode.toLowerCase(),
         duration: Math.floor(durationHours * 3600),
-        isPublic: isPublic
+        isPublic: isPublic,
+        whitelist: whitelist
     });
 
     startFocusDetection();
@@ -389,6 +454,24 @@ window.joinRoom = async function (id, name, mode, durationHours, isPublic = true
 
 function leaveRoom() {
     window.location.reload(); // Hard reset for clean disconnect and re-init
+}
+
+window.appendWhitelist = function(domain) {
+    const input = document.getElementById("input-create-whitelist");
+    if (!input) return;
+
+    let current = input.value.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
+    if (!current.includes(domain)) {
+        current.push(domain);
+        input.value = current.join(', ');
+        // Visual feedback
+        const btn = Array.from(document.querySelectorAll('.whitelist-suggestions button'))
+                         .find(b => b.innerText.toLowerCase().includes(domain.split('.')[0]));
+        if (btn) {
+            btn.style.borderColor = 'var(--status-active)';
+            btn.style.color = 'var(--status-active)';
+        }
+    }
 }
 
 function showAlert(message, type = 'error') {
@@ -437,6 +520,35 @@ function resetInactivityTimer() {
     inactivityTimeout = setTimeout(() => {
         handleFocusLost();
     }, 15000); // 15 seconds
+}
+
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      // --- Research Mode Bypassing ---
+      if (state.researchModeTimeout) {
+          console.log("[LAB_TRUST] Focus lost but researcher is in an active Research Mode. Silencing alert.");
+          return; // Skip alert
+      }
+
+      socket.emit("focus_lost", {
+        username: state.username,
+        userId: socket.id
+      });
+    }
+  });
+
+// Launch a whitelisted site in a new tab and activate 'Research Mode' (60s grace)
+function launchResearchSite(url) {
+    if (state.researchModeTimeout) clearTimeout(state.researchModeTimeout);
+    
+    // Standard Laboratory Protocol: Activate Trust Bridge for 60 seconds
+    state.researchModeTimeout = setTimeout(() => {
+        state.researchModeTimeout = null;
+        console.log("[LAB_TRUST] Research mode expired. Focus enforcement resumed.");
+    }, 60000); // 60s grace
+
+    const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+    window.open(fullUrl, '_blank');
 }
 
 function startFocusDetection() {
@@ -490,6 +602,7 @@ dom.btnSubmitCreate.addEventListener('click', () => {
     const name = dom.inputCreateName.value.trim() || 'My Focus Room';
     const mode = dom.selectCreateMode.value;
     const privacy = dom.selectCreatePrivacy.value;
+    const whitelist = document.getElementById("input-create-whitelist").value.trim();
     let timeHours = parseFloat(dom.inputCreateTime.value) || 1;
 
     const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -497,9 +610,10 @@ dom.btnSubmitCreate.addEventListener('click', () => {
     // Reset inputs
     dom.inputCreateName.value = '';
     dom.inputCreateTime.value = '1';
+    document.getElementById("input-create-whitelist").value = '';
 
     // Use our new joinRoom function!
-    joinRoom(newRoomId, name, mode, timeHours, privacy === 'Public');
+    joinRoom(newRoomId, name, mode, timeHours, privacy === 'Public', whitelist);
 });
 
 dom.btnJoinRoom.addEventListener('click', () => {
