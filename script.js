@@ -1,4 +1,4 @@
-const socket = io("http://localhost:3000");
+const socket = io();
 
 const state = {
     username: localStorage.getItem('focus_user') || null,
