@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusRoom - Premium Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+</head>
+
+<body>
+
+    <!-- 3D Environment Background Elements -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
+
+    <!-- Alert Container -->
+    <div id="alert-container" class="alert-container"></div>
+
+    <!-- Home Page View -->
+    <div id="home-page" class="view">
+        <div class="header glass-panel">
+            <h1 id="home-greeting">FocusRoom</h1>
+            <p id="home-subtitle">Elevate your productivity. Join a session or create your own sanctuary.</p>
+        </div>
+
+        <div class="home-actions">
+            <div style="display: flex; gap: 1rem;">
+                <button id="btn-create-room" class="btn primary 3d-btn"><span class="btn-content">Create New
+                        Room</span></button>
+                <button id="btn-global-leaderboard" class="btn secondary 3d-btn"><span class="btn-content">🏆
+                        Leaderboard</span></button>
+            </div>
+            <div class="join-room">
+                <div class="input-wrapper 3d-input">
+                    <input type="text" id="input-room-code" placeholder="Enter Room Code">
+                </div>
+                <button id="btn-join-room" class="btn secondary 3d-btn"><span class="btn-content">Join</span></button>
+            </div>
+        </div>
+
+        <div class="room-list-container">
+            <h2 class="section-title">Open Sanctuaries</h2>
+            <div id="room-list" class="room-list">
+                <!-- Room cards will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Leaderboard Page View -->
+    <div id="global-leaderboard-page" class="view hidden">
+        <div class="create-header">
+            <button id="btn-back-home-lb" class="btn text">← Back</button>
+            <h2 class="section-title" style="margin-bottom:0">Global Hall of Fame</h2>
+        </div>
+        <div class="glass-panel" style="max-width: 800px; margin: 0 auto; padding: 2rem;">
+            <div id="global-leaderboard-list" class="leaderboard-list">
+                <!-- Global leaderboard items will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Room Page View -->
+    <div id="create-room-page" class="view hidden">
+        <div class="create-header">
+            <button id="btn-back-home" class="btn text">← Back</button>
+            <h2 class="section-title" style="margin-bottom:0">Create Sanctuary</h2>
+        </div>
+
+        <div class="glass-panel create-form-container">
+            <div class="form-group">
+                <label>Room Name</label>
+                <div class="3d-input">
+                    <input type="text" id="input-create-name" placeholder="e.g. Deep Work Session">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Mode</label>
+                <div class="3d-input">
+                    <select id="select-create-mode">
+                        <option value="Survival">Survival Mode</option>
+                        <option value="Commitment">Commitment Mode</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Session Duration (Hours)</label>
+                <div class="3d-input">
+                    <input type="number" id="input-create-time" value="3" min="1" max="120">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Privacy</label>
+                <div class="3d-input">
+                    <select id="select-create-privacy">
+                        <option value="Public">Public Room</option>
+                        <option value="Private">Private Room</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="btn-submit-create" class="btn primary 3d-btn" style="width:100%; margin-top:1rem;"><span
+                    class="btn-content">Create Session</span></button>
+        </div>
+    </div>
+
+    <!-- Room Page View -->
+    <div id="room-page" class="view hidden">
+        <div class="room-header glass-panel">
+            <button id="btn-leave-room" class="btn text">← Leave Room</button>
+            <div style="display:flex; flex-direction:column; align-items:center;">
+                <h2 id="room-title" class="neon-text" style="line-height:1; margin-bottom: 5px;">Room Name</h2>
+                <div id="room-code-display" style="color:var(--text-muted); font-size: 1rem; letter-spacing: 2px;">#0000
+                </div>
+            </div>
+            <div class="mode-badge" id="room-mode">Survival</div>
+        </div>
+
+        <div class="room-layout">
+            <!-- Left Panel -->
+            <div class="panel left-panel glass-panel 3d-panel" style="justify-content: center;">
+                <div class="timer-container float-anim">
+                    <div id="total-room-time"
+                        style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 600;">
+                        Total Time Left: 00:00</div>
+                    <div id="session-number"
+                        style="font-size: 1.5rem; font-weight: 800; color: var(--primary); margin-bottom: 2rem; text-transform: uppercase; letter-spacing: 2px;">
+                        Session 1</div>
+
+                    <div id="countdown-timer" class="timer glow-timer">25:00</div>
+                    <div id="timer-phase-label" class="timer-label">Focus Time Remaining</div>
+                </div>
+            </div>
+
+            <!-- Center Panel -->
+            <div class="panel center-panel glass-panel 3d-panel"
+                style="flex: 2; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="margin: 0;">Participants (<span id="participant-count">0</span>)</h3>
+                    <div class="media-controls">
+                        <button id="btn-toggle-mic" class="btn text"
+                            style="border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 5px 10px;">🎤
+                            Mic On</button>
+                        <button id="btn-toggle-vid" class="btn text"
+                            style="border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 5px 10px;">📷
+                            Vid On</button>
+                    </div>
+                </div>
+
+                <!-- Replacing user-list with video-grid -->
+                <div id="video-grid" class="video-grid" style="flex: 1; overflow-y: auto;">
+                    <!-- Video cards will be injected here -->
+                </div>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="panel right-panel glass-panel 3d-panel">
+                <h3>Leaderboard</h3>
+                <div id="leaderboard" class="leaderboard-list">
+                    <!-- Leaderboard items will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
